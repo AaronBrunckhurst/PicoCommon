@@ -28,7 +28,9 @@ std::map<std::string, command_t> commands;
 
 extern "C" void register_command(const command_t command)
 {
-    commands[command.command_name] = command;
+    if(command.command_name == nullptr || command.command_name == NULL) return;
+    if(command.func == nullptr || command.func == NULL) return;
+    commands[std::string(command.command_name)] = command;
 }
 
 extern "C" void add_command(const char* command_name, const char* command_help_str, command_function_t func)
@@ -54,7 +56,9 @@ extern "C" void print_help_message()
 
     // Iterate through the map and print the elements
     while (it != commands.end()) {
-        std::cout << it->first << " - " << it->second.command_help_str << std::endl;
+        if(it->second.command_help_str != nullptr && it->second.command_help_str != NULL) {
+            std::cout << it->first << " - " << it->second.command_help_str << std::endl;
+        }
         ++it;
     }
 }
@@ -99,7 +103,7 @@ bool first_index_of(const char* buffer, const unsigned int buffer_size, const ch
 {
     for(unsigned int i = 0; i < buffer_size; i++)
     {
-        if(buffer[i] == '\0') { return false; }
+        if(buffer[i] == '\0') { *index = i; return false; }
 
         if(buffer[i] == search_char)
         {
@@ -118,18 +122,25 @@ extern "C" void run_command()
 
     // Extract the command argument from the recive_buffer string.
     bool arg_found = first_index_of(recive_buffer, INPUT_BUFFER_SIZE, COMMAND_DELIMITER_CHAR, &first_arg_end);
+    if(!arg_found) arg_found = first_index_of(recive_buffer, INPUT_BUFFER_SIZE, '\0', &first_arg_end);
 
     // If the command argument is not found, then we are experencing an error.
-    if(!arg_found)
+    if (false) //if(!arg_found)
     {
         printf("Command parse argument error.\n");
         recive_buffer_index = 0;
         return;
     }
 
+    // Copy the command argument from the recive_buffer to the arg_string.
+    for(unsigned int i = 0; i < first_arg_end; i++)
+    {
+        arg_string[i] = recive_buffer[i];
+    }
+
     printf("Command: \"%s\".\n", arg_string);
 
-    auto found_command = commands.find(arg_string);
+    auto found_command = commands.find(std::string(arg_string));
 
     // Handle if the command is not found.
     if (found_command == commands.end())

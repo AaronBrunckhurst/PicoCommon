@@ -60,17 +60,17 @@ void run_echo()
 }
 
 void register_default_commands()
-{
-    add_command("?", "Print this message.", print_help_message);
+{    
     add_command("help", "Print this message.", print_help_message);
+    add_command("?", NULL, print_help_message);
     add_command("echo", "echo - print given text.", run_echo);
     //add_command("status", "status - print information about the current state of this device to console.", run_status_command);
     add_command("status_malloc", "status_malloc - print information about the current state of malloc to console.", run_status_malloc_command);
     add_command("status_sys", "status_sys - print information about the current state of the system to console.", run_status_sys_command);
-    add_command("capture", "capture - traps the program flow in a loop (but still alows commands to be run).", run_capture_command);
-    add_command("uf2", "uf2 | bootloader | F - this device will enter bootloader mode.", run_bootloader_command);
+    add_command("capture", "capture - traps the program flow in a loop (but still alows commands to be run).", run_capture_command);    
     add_command("bootloader", "uf2 | bootloader | F - this device will enter bootloader mode.", run_bootloader_command);
-    add_command("F", "uf2 | bootloader | F - this device will enter bootloader mode.", run_bootloader_command);
+    add_command("uf2", NULL, run_bootloader_command);
+    add_command("F", NULL, run_bootloader_command);
 }
 
 #endif // SERIAL_CONSOLE_DEFAULT_COMMANDS_H

@@ -23,7 +23,9 @@ typedef struct Command
 } command_t;
 
 //function definitions
+// pass NULL to new_command.command_help_str to not print help message.
 void register_command(const command_t new_command);
+// pass NULL to command_help_str to not print help message.
 void add_command(const char* command_name, const char* command_help_str, command_function_t func);
 void print_hello_message();
 void print_help_message();
