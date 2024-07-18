@@ -11,8 +11,8 @@
 
 void prepare_loop(int delay_in_seconds);
 void print_status();
-int create_status_html_page(char *html_page_dst, const unsigned int html_page_dst_max_size, const char *params);
-int create_index_html_page(char *html_page_dst, const unsigned int html_page_dst_max_size, const char *params);
+void create_status_html_page(const char *params, AP_TCP_CONNECTION_T* connection, int *write_error_code);
+void create_index_html_page(const char *params, AP_TCP_CONNECTION_T* connection, int *write_error_code);
 
 int main() {
     //This function must be initialized here or else PicoLogger functions won't work for some reason
@@ -23,7 +23,6 @@ int main() {
     register_default_commands();
     add_command("status", "Prints the status", print_status);
     
-
     // init filesystem
     init_filesystem();
 
@@ -77,20 +76,22 @@ void print_status() {
 
 // typedef int (*html_page_generator_func_t)(char *html_page_dst, const unsigned int html_page_dst_max_size, const char *params);
 
-int create_status_html_page(char *html_page_dst, const unsigned int html_page_dst_max_size, const char *params)
+void create_status_html_page(const char *params, AP_TCP_CONNECTION_T* connection, int *write_error_code)
 {
     (void)params;
 
-    int used = snprintf(html_page_dst, html_page_dst_max_size, "<html><body><h1>Status</h1><p>Some status information</p></body></html>");
-    if(used > 0) return used;
-    return 0;
+    char html_page[1024] = {0};
+    int html_page_used = snprintf(html_page, 1024, "<html><body><h1>Status</h1><p>Some status information</p></body></html>");
+
+    (*write_error_code) = send_get_responce(connection, html_page, html_page_used);
 }
 
-int create_index_html_page(char *html_page_dst, const unsigned int html_page_dst_max_size, const char *params)
+void create_index_html_page(const char *params, AP_TCP_CONNECTION_T* connection, int *write_error_code)
 {
     (void)params;
 
-    int used = snprintf(html_page_dst, html_page_dst_max_size, "<html><body><h1>Status</h1><p>Index: </p></body></html>");
-    if(used > 0) return used;
-    return 0;
+    char html_page[1024] = {0};
+    int html_page_used = snprintf(html_page, 1024, "<html><body><h1>Status</h1><p>Index: </p></body></html>");
+
+    (*write_error_code) = send_get_responce(connection, html_page, html_page_used);
 }

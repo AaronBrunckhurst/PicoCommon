@@ -8,18 +8,23 @@
 extern "C" {
 #endif
 
-// dont write more then this_value-1 in your generator function, if you make this bigger it will change the internal buffer size, which will work up to an extent, then break because of pico memory limitations.
-#define MAX_DATA_SIZE 4096
-
-#define MAX_HEADER_SIZE 128
+typedef struct AP_TCP_CONNECTION_T_ {
+    int dummy_data;
+} AP_TCP_CONNECTION_T;
 
 // if you change this, you will change the default page that clients will be shown. MAKE SURE THIS EXISTS
 #define DEFAULT_URL "/index.html"
 
-typedef int (*html_page_generator_func_t)(char *html_page_dst, const unsigned int html_page_dst_max_size, const char *params);
+typedef void (*html_page_generator_func_t)(const char *params, AP_TCP_CONNECTION_T* connection, int *write_error_code);
+
+typedef bool (*ap_get_handeler_func_t)(char *request, char *params, AP_TCP_CONNECTION_T* connection, int *write_error_code);
 
 // set this in your program to change what page the users are brought to by default
 extern const char* default_url;
+
+// set this if you need to handle get requests in a specific way
+// and request endpoint already registered with register_html_generator will not get passed to this function
+extern ap_get_handeler_func_t get_handler;
 
 // register_html_generator:
 // This will register a function to generate an html page when a request is made to the server
@@ -34,7 +39,13 @@ int access_point_deinit();
 // depending on which cyw43 lib is being used, this may need to be called in your main loop frequently.
 void poll();
 
+int ap_tcp_write(AP_TCP_CONNECTION_T* connection, const char* data, const unsigned int data_len);
+
+// default way to send a get responce
+int send_get_responce(AP_TCP_CONNECTION_T* connection, const char* data, const unsigned int data_len);
+
 // useful bits
+extern bool debug_print;
 #define HTTP_REFRESH "<meta http-equiv=\"refresh\" content=\"5\">"
 
 #define EXAMPLE_TEST_BODY "<html><body><h1>Hello from Pico W.</h1><p>Led is %s</p><p><a href=\"?led=%d\">Turn led %s</a></body></html>"

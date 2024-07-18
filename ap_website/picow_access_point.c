@@ -21,6 +21,10 @@
 
 #include "html_helper.c"
 
+// dont write more then this_value-1 in your generator function, if you make this bigger it will change the internal buffer size, which will work up to an extent, then break because of pico memory limitations.
+#define MAX_DATA_SIZE 4096
+#define MAX_HEADER_SIZE 128
+
 #define TCP_PORT 80
 #define DEBUG_printf printf
 #define POLL_TIME_S 5
@@ -53,28 +57,19 @@ typedef struct TCP_CONNECT_STATE_T_ {
     ip_addr_t *gw;
 } TCP_CONNECT_STATE_T;
 
+bool debug_print = false;
+
 // function prototypes
 bool is_default_requests(const char* request, const unsigned max_size);
 int find_first_index(const char *str, char ch, unsigned int max_length);
 
 const char* default_url = DEFAULT_URL;
+ap_get_handeler_func_t get_handler = NULL;
 
 // globals, for init and deinit
 static TCP_SERVER_T* state;
 static dhcp_server_t dhcp_server;
 static dns_server_t dns_server;
-
-static int gerate_url_content(const char *request, const char *params, char *result, size_t max_result_len) {
-    int len = 0;
-
-    bool html_generated = create_html_page(request, params, result, max_result_len);
-    if(html_generated)
-    {
-        return strnlen(result, max_result_len);
-    }
-
-    return len;
-}
 
 static err_t tcp_close_client_connection(TCP_CONNECT_STATE_T *con_state, struct tcp_pcb *client_pcb, err_t close_err) {
     if (client_pcb) {
@@ -107,21 +102,61 @@ static void tcp_server_close(TCP_SERVER_T *state) {
 
 static err_t tcp_server_sent(void *arg, struct tcp_pcb *pcb, u16_t len) {
     TCP_CONNECT_STATE_T *con_state = (TCP_CONNECT_STATE_T*)arg;
-    DEBUG_printf("tcp_server_sent %u\n", len);
+    if(debug_print) { DEBUG_printf("tcp_server_sent %u\n", len); }
     con_state->sent_len += len;
     if (con_state->sent_len >= con_state->header_len + con_state->result_len) {
-        DEBUG_printf("all done\n");
+        if(debug_print) { DEBUG_printf("all done\n"); }
         return tcp_close_client_connection(con_state, pcb, ERR_OK);
     }
     return ERR_OK;
 }
 
+int send_get_responce(AP_TCP_CONNECTION_T* connection, const char* data, const unsigned int data_len)
+{
+    TCP_CONNECT_STATE_T* state = (TCP_CONNECT_STATE_T*)connection;
+
+    char header_data[MAX_HEADER_SIZE] = {0};
+    size_t header_len = snprintf(header_data, sizeof(header_data), HTTP_RESPONSE_HEADERS,
+            HTTP_GET_CODE, data_len);
+    if (header_len > sizeof(header_data) - 1) {
+        DEBUG_printf("Too much header data %d\n", header_len);
+        return tcp_close_client_connection(state, state->pcb, ERR_CLSD);
+    }
+
+    // Send the headers to the client
+    err_t err = ap_tcp_write(connection, header_data, header_len);
+    if (err != ERR_OK) { return err; }
+
+    // Send the body to the client
+    err = ap_tcp_write(connection, data, data_len);
+    if (err != ERR_OK) { return err; }
+    return ERR_OK;
+}
+
 err_t http_get_generate(char *request, char *params, struct tcp_pcb *pcb, TCP_CONNECT_STATE_T *con_state)
 {
-    // Generate content
-    con_state->result_len = gerate_url_content(request, params, con_state->result, sizeof(con_state->result));
-    DEBUG_printf("Request: %s?%s\n", request, params);
-    DEBUG_printf("Result: %d\n", con_state->result_len);
+    AP_TCP_CONNECTION_T* connection = (AP_TCP_CONNECTION_T*)con_state;
+
+    if(debug_print) {
+        DEBUG_printf("Request: %s?%s\n", request, params);
+    }
+
+    // Generate content    
+    int send_error_code = 0;
+    bool html_generated = create_html_page(request, params, connection, &send_error_code);
+    if(html_generated)
+    {
+        return send_error_code;
+    }
+
+    if(get_handler != NULL)
+    {
+        bool handeled = get_handler(request, params, connection, &send_error_code);
+        if(handeled)
+        {
+            return send_error_code;
+        }
+    }    
 
     // Check we had enough buffer space
     if (con_state->result_len > sizeof(con_state->result) - 1) {
@@ -143,7 +178,7 @@ err_t http_get_generate(char *request, char *params, struct tcp_pcb *pcb, TCP_CO
             // Send redirect
             con_state->header_len = snprintf(con_state->headers, sizeof(con_state->headers), HTTP_RESPONSE_REDIRECT_HEADER,
                 ipaddr_ntoa(con_state->gw), default_url);
-            DEBUG_printf("Sending redirect %s", con_state->headers);
+            if(debug_print) { DEBUG_printf("Sending redirect %s", con_state->headers); }
         }
         else
         {
@@ -153,7 +188,7 @@ err_t http_get_generate(char *request, char *params, struct tcp_pcb *pcb, TCP_CO
             // Send not found
             con_state->result_len = snprintf(con_state->result, sizeof(NOT_FOUND_BODY), NOT_FOUND_BODY, small_request);
             con_state->header_len = snprintf(con_state->headers, sizeof(con_state->headers), HTTP_RESPONSE_NOT_FOUND_HEADER, con_state->result_len);
-            DEBUG_printf("Sending not found %s", con_state->headers);
+            if(debug_print) { DEBUG_printf("Sending not found %s", con_state->headers); }
         }
     }
 
@@ -179,12 +214,12 @@ err_t http_get_generate(char *request, char *params, struct tcp_pcb *pcb, TCP_CO
 err_t tcp_server_recv(void *arg, struct tcp_pcb *pcb, struct pbuf *p, err_t err) {
     TCP_CONNECT_STATE_T *con_state = (TCP_CONNECT_STATE_T*)arg;
     if (!p) {
-        DEBUG_printf("connection closed\n");
+        if(debug_print) { DEBUG_printf("connection closed\n"); }
         return tcp_close_client_connection(con_state, pcb, ERR_OK);
     }
     assert(con_state && con_state->pcb == pcb);
     if (p->tot_len > 0) {
-        DEBUG_printf("tcp_server_recv %d err %d\n", p->tot_len, err);
+        if(debug_print) { DEBUG_printf("tcp_server_recv %d err %d\n", p->tot_len, err); }
 #if 0
         for (struct pbuf *q = p; q != NULL; q = q->next) {
             DEBUG_printf("in: %.*s\n", q->len, q->payload);
@@ -238,7 +273,7 @@ static err_t tcp_server_accept(void *arg, struct tcp_pcb *client_pcb, err_t err)
         DEBUG_printf("failure in accept\n");
         return ERR_VAL;
     }
-    DEBUG_printf("client connected\n");
+    if(debug_print) { DEBUG_printf("client connected\n"); }
 
     // Create the state for the connection
     TCP_CONNECT_STATE_T *con_state = calloc(1, sizeof(TCP_CONNECT_STATE_T));
@@ -350,6 +385,17 @@ int access_point_deinit() {
     return 0;
 }
 
+int ap_tcp_write(AP_TCP_CONNECTION_T* connection, const char* data, const unsigned int data_len)
+{
+    TCP_CONNECT_STATE_T* state = (TCP_CONNECT_STATE_T*)connection;
+    err_t err = tcp_write(state->pcb, data, data_len, 0);
+    if (err != ERR_OK) {
+        DEBUG_printf("failed to write header data %d\n", err);
+        return tcp_close_client_connection(state, state->pcb, err);
+    }
+    return err;
+}
+
 void register_html_generator(const char *request_str, url_generator_func_t html_generator_func)
 {
     register_url(request_str, html_generator_func);
@@ -357,6 +403,7 @@ void register_html_generator(const char *request_str, url_generator_func_t html_
 
 bool is_default_requests(const char* request, const unsigned max_size)
 {
+    (void)max_size;
     int str_one_comp = strncmp(request, DEFAULT_REQUEST_ONE, sizeof(DEFAULT_REQUEST_ONE)-1);
     int str_two_comp = strncmp(request, DEFAULT_REQUEST_TWO, sizeof(DEFAULT_REQUEST_TWO) - 1);
     int str_three_comp = strncmp(request, DEFAULT_REQUEST_THREE, sizeof(DEFAULT_REQUEST_THREE) - 1);
@@ -373,7 +420,7 @@ bool is_default_requests(const char* request, const unsigned max_size)
 // Function to find the first index of a character in a string
 int find_first_index(const char *str, char ch, unsigned int max_length) {
     // Iterate over the string
-    for (int i = 0; (str[i] != '\0') && (i < max_length); i++) {
+    for (unsigned int i = 0; (str[i] != '\0') && (i < max_length); i++) {
         // Check if the current character matches the target character
         if (str[i] == ch) {
             return i; // Return the index if a match is found

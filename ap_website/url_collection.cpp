@@ -1,6 +1,7 @@
 #include <map>
 
 #include "url_collection.h"
+#include "picow_access_point.h"
 
 typedef struct url_item {
     const char *url;
@@ -30,7 +31,7 @@ url_item_t find_handeler(const char *key_or_more)
 }
 
 
-extern "C" bool create_html_page(const char *request, const char *params, char *result, unsigned int max_result_len)
+extern "C" bool create_html_page(const char *request, const char *params, AP_TCP_CONNECTION_T* connection, int* write_error_code)
 {
     url_item_t handeler = find_handeler(request);
 
@@ -39,6 +40,6 @@ extern "C" bool create_html_page(const char *request, const char *params, char *
         return false;
     }
 
-    handeler.html_generator_func(result, max_result_len, params);
+    handeler.html_generator_func(params, connection, write_error_code);
     return true;
 }
