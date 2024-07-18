@@ -11,7 +11,6 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
 cmake_policy(SET CMP0079 NEW)
 add_compile_options(-Wall -Wextra)
-set(PICO_BOARD pico_w) # Remove this if pico board is not pico w
 
 # Creates a pico-sdk subdirectory in our project for the libraries
 pico_sdk_init()
@@ -33,6 +32,7 @@ INCLUDE_DIRECTORIES("${BASEPATH}")
 
 add_subdirectory(serial_console)
 add_subdirectory(filesystem)
+add_subdirectory(ap_website)
 
 # Linking Pico libraries
 target_link_libraries(${PROJECT_NAME} PUBLIC
@@ -43,6 +43,7 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
     pico_cyw43_arch_none
     serial_console
     filesystem
+    ap_website
 )
 
 # Enable usb output, disable uart output
