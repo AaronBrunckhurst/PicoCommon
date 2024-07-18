@@ -13,6 +13,7 @@ void prepare_loop(int delay_in_seconds);
 void print_status();
 void create_status_html_page(const char *params, AP_TCP_CONNECTION_T* connection, int *write_error_code);
 void create_index_html_page(const char *params, AP_TCP_CONNECTION_T* connection, int *write_error_code);
+void file_html_page(const char *params, AP_TCP_CONNECTION_T* connection, int *write_error_code);
 
 int main() {
     //This function must be initialized here or else PicoLogger functions won't work for some reason
@@ -34,6 +35,7 @@ int main() {
 
     register_html_generator("/status", create_status_html_page);
     register_html_generator("/index.html", create_index_html_page);
+    register_html_generator("/file", file_html_page);
 
     const uint LED_PIN = CYW43_WL_GPIO_LED_PIN;
     gpio_init(LED_PIN);
@@ -94,4 +96,27 @@ void create_index_html_page(const char *params, AP_TCP_CONNECTION_T* connection,
     int html_page_used = snprintf(html_page, 1024, "<html><body><h1>Status</h1><p>Index: </p></body></html>");
 
     (*write_error_code) = send_get_responce(connection, html_page, html_page_used);
+}
+
+// Example of a way of downloading files through HTTP
+#define HTTP_RESPONSE_FILE_DOWNLOAD_HEADER "HTTP/1.1 200 OK\nServer: PICOW (RP2040)\nContent-Type: text/plain\nContent-Length: %d\nContent-Disposition: attachment; filename=\"%s\"\nConnection: close\n\n"
+void file_html_page(const char *params, AP_TCP_CONNECTION_T* connection, int *write_error_code)
+{
+    (void)params;
+
+    char file_data[128] = {0};
+    memset(file_data, 'H', sizeof(file_data));
+    unsigned int file_data_len = sizeof(file_data);
+
+    char header_data[256] = {0};
+    int header_data_used = snprintf(header_data, 256, HTTP_RESPONSE_FILE_DOWNLOAD_HEADER, file_data_len, "file.txt");
+
+
+    // Send the headers to the client
+    (*write_error_code) = ap_tcp_write(connection, header_data, header_data_used);
+    if ((*write_error_code) != 0) { return; }
+
+    // Send the body to the client
+    (*write_error_code) = ap_tcp_write(connection, file_data, file_data_len);
+    if ((*write_error_code) != 0) { return; }
 }
