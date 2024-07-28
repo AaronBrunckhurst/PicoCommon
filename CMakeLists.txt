@@ -33,6 +33,7 @@ INCLUDE_DIRECTORIES("${BASEPATH}")
 add_subdirectory(serial_console)
 add_subdirectory(filesystem)
 add_subdirectory(ap_website)
+add_subdirectory(http_server)
 
 # Linking Pico libraries
 target_link_libraries(${PROJECT_NAME} PUBLIC
@@ -44,6 +45,7 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
     serial_console
     filesystem
     ap_website
+    http_server
 )
 
 # Enable usb output, disable uart output
