@@ -1,4 +1,5 @@
 #include <map>
+#include <stdint.h>
 
 #include "url_collection.h"
 #include "http_server.h"

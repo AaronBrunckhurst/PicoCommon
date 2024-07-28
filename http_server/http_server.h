@@ -9,6 +9,8 @@ extern "C" {
 #include <stdbool.h>
 #endif
 
+typedef unsigned short u16_t;
+
 #define MAX_HEADER_SIZE 128
 #define MAX_DATA_SIZE 4096
 
@@ -28,9 +30,12 @@ extern ap_get_handeler_func_t get_handler;
 
 extern bool http_server_debug_prints;
 
-int http_server_start_timeout(const char* wifi_ssid, const char* wifi_password, uint32_t wifi_connect_timeout_ms, const char* hostname);
-int http_server_start(const char* wifi_ssid, const char* wifi_password, const char* hostname);
+int http_server_start_timeout(const char* wifi_ssid, const char* wifi_password, uint32_t wifi_connect_timeout_ms, const char* hostname, u16_t host_port);
+int http_server_start(const char* wifi_ssid, const char* wifi_password, const char* hostname, u16_t host_port);
 int http_server_stop(void);
+
+void html_server_register_generator(const char *request_str, html_page_generator_func_t html_generator_func);
+int html_server_send_get_responce(TCP_CONNECTION_T* connection, const char* data, const unsigned int data_len);
 
 #ifdef __cplusplus
 };

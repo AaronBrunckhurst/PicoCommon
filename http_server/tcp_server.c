@@ -123,9 +123,9 @@ err_t tcp_server_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t err
             int error = tcp_server_on_data_recived(read_data, amount_read, connection);
             err_t err = (err_t)error;
             if (err != ERR_OK) {
-            DEBUG_printf("failed to write tcp data %d\n", err);
-            return tcp_close_client_connection(con_state, con_state->pcb, err);
-        }
+                DEBUG_printf("failed to write tcp data %d\n", err);
+                return tcp_close_client_connection(con_state, con_state->pcb, err);
+            }
         } else {
             DEBUG_printf("tcp_server ERROR - No data recived handler set\n");
         }
@@ -178,9 +178,9 @@ static err_t tcp_server_accept(void *arg, struct tcp_pcb *client_pcb, err_t err)
     return ERR_OK;
 }
 
-static bool tcp_server_open(void *arg) {
+static bool tcp_server_open(void *arg, u16_t host_port) {
     TCP_SERVER_T *state = (TCP_SERVER_T*)arg;
-    DEBUG_printf("Starting server at %s on port %u\n", ip4addr_ntoa(netif_ip4_addr(netif_list)), TCP_PORT);
+    DEBUG_printf("Starting server at %s on port %u\n", ip4addr_ntoa(netif_ip4_addr(netif_list)), host_port);
 
     struct tcp_pcb *pcb = tcp_new_ip_type(IPADDR_TYPE_ANY);
     if (!pcb) {
@@ -188,9 +188,9 @@ static bool tcp_server_open(void *arg) {
         return false;
     }
 
-    err_t err = tcp_bind(pcb, NULL, TCP_PORT);
+    err_t err = tcp_bind(pcb, NULL, host_port);
     if (err) {
-        DEBUG_printf("failed to bind to port %u\n", TCP_PORT);
+        DEBUG_printf("failed to bind to port %u\n", host_port);
         return false;
     }
 
@@ -218,20 +218,21 @@ void tcp_server_poll(void)
     #endif
 }
 
-bool tcp_server_send_data(TCP_CONNECTION_T* connection, const char* data, const unsigned int data_len)
+int tcp_server_send_data(TCP_CONNECTION_T* connection, const char* data, const unsigned int data_len)
 {
     TCP_CONNECT_STATE_T *con_state = (TCP_CONNECT_STATE_T*)connection;
     struct tcp_pcb *tpcb = con_state->pcb;
 
     cyw43_arch_lwip_begin();
     con_state->written_len += data_len;
-    err_t err = tcp_write(tpcb, data, data_len, TCP_WRITE_FLAG_COPY);
-    if (err != ERR_OK) {
-        DEBUG_printf("Failed to write data %d\n", err);
-        return false;
-    }
-    return true;
+    err_t err = tcp_write(tpcb, data, data_len, TCP_WRITE_FLAG_COPY);    
+    // if (err != ERR_OK) {
+    //     DEBUG_printf("Failed to write data %d\n", err);
+    //     return false;
+    // }
+    // return true;
     cyw43_arch_lwip_end();
+    return err;
 }
 
 bool tcp_server_is_running()
@@ -239,9 +240,10 @@ bool tcp_server_is_running()
     return tcp_server_state != NULL;
 }
 
-int tcp_server_start_timeout(const char* wifi_ssid, const char* wifi_password, uint32_t wifi_connect_timeout_ms, const char* hostname)
+int tcp_server_start_timeout(const char* wifi_ssid, const char* wifi_password, uint32_t wifi_connect_timeout_ms, const char* hostname, u16_t host_port)
 {
-    int wifi_start_status = wifi_start_timeout(wifi_ssid, wifi_password, wifi_connect_timeout_ms);
+    wifi_debug_prints = tcp_server_debug_prints;
+    int wifi_start_status = wifi_start_timeout(wifi_ssid, wifi_password, hostname, wifi_connect_timeout_ms);
 
     // check if wifi connected sucessfully
     if(wifi_start_status != WIFI_STATUS_SUCESS)
@@ -251,31 +253,29 @@ int tcp_server_start_timeout(const char* wifi_ssid, const char* wifi_password, u
 
     tcp_server_state = tcp_server_init();
     if (!tcp_server_state) {
+        DEBUG_printf("failed to allocate tcp_server_state\n");
         return 3;
     }
 
-    bool tcp_server_open_sucess = tcp_server_open(tcp_server_state);
+    bool tcp_server_open_sucess = tcp_server_open(tcp_server_state, host_port);
     if (!tcp_server_open_sucess) {
+        DEBUG_printf("failed to open tcp server\n");
         return 4;
     }
 
     last_wifi_ssid = wifi_ssid;
 
-    // Set the hostname
-    netif_set_hostname(netif_default, hostname);
-    printf("Hostname set to %s\n", hostname);
-
     return 0;
 }
-int tcp_server_start(const char* wifi_ssid, const char* wifi_password, const char* hostname)
+int tcp_server_start(const char* wifi_ssid, const char* wifi_password, const char* hostname, u16_t host_port)
 {
-    return tcp_server_start_timeout(wifi_ssid, wifi_password, TCP_SERVER_DEFAULT_WIFI_CONNECT_TIMEOUT_MS, hostname);
+    return tcp_server_start_timeout(wifi_ssid, wifi_password, TCP_SERVER_DEFAULT_WIFI_CONNECT_TIMEOUT_MS, hostname, host_port);
 }
 
 int tcp_server_stop(void)
 {
     if(tcp_server_debug_prints) {
-        printf("TCP Server disconnecting from wifi network: \"%s\"\n", last_wifi_ssid);
+        DEBUG_printf("TCP Server disconnecting from wifi network: \"%s\"\n", last_wifi_ssid);
     }
 
     if(tcp_server_is_running())

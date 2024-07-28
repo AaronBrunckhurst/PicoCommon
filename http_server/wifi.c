@@ -6,12 +6,20 @@
 bool wifi_debug_prints = false;
 bool wifi_connected = false;
 
-int wifi_start(const char* wifi_ssid, const char* wifi_password)
-{
-    return wifi_start_timeout(wifi_ssid, wifi_password, WIFI_CONNECT_DEFAULT_TIMEOUT_MS);
+void wifi_set_host_name(const char* hostname) {
+    cyw43_arch_lwip_begin();
+    struct netif *n = &cyw43_state.netif[CYW43_ITF_STA];
+    netif_set_hostname(n, hostname);
+    netif_set_up(n);
+    cyw43_arch_lwip_end();
 }
 
-int wifi_start_timeout(const char* wifi_ssid, const char* wifi_password, uint32_t wifi_connect_timeout_ms)
+int wifi_start(const char* wifi_ssid, const char* wifi_password, const char* hostname)
+{
+    return wifi_start_timeout(wifi_ssid, wifi_password, hostname, WIFI_CONNECT_DEFAULT_TIMEOUT_MS);
+}
+
+int wifi_start_timeout(const char* wifi_ssid, const char* wifi_password, const char* hostname, uint32_t wifi_connect_timeout_ms)
 {
     if(wifi_connected) {
         wifi_stop();
@@ -23,6 +31,11 @@ int wifi_start_timeout(const char* wifi_ssid, const char* wifi_password, uint32_
     }
 
     cyw43_arch_enable_sta_mode();
+
+    wifi_set_host_name(hostname);
+    if(wifi_debug_prints) {
+        printf("Wi-Fi Hostname set to: \"%s\"\n", hostname);
+    }
 
     if(wifi_debug_prints) {
         printf("TCP Server connecting to Wi-Fi: \"%s\"\n", wifi_ssid);

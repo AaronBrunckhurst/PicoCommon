@@ -10,13 +10,16 @@
 #define DEBUG_printf printf
 
 #define HTTP_GET "GET"
+#define HTTP_GET_CODE 200
+
+#define HTTP_RESPONSE_HEADERS "HTTP/1.1 %d OK\nServer: PICOW (RP2040)\nContent-Length: %d\nContent-Type: text/html; charset=utf-8\nConnection: close\n\n"
 
 #define HTTP_RESPONSE_NOT_FOUND_HEADER "HTTP/1.1 404 Not Found\nServer: PICOW (RP2040)\nContent-Length: %d\nContent-Type: text/html; charset=utf-8\nConnection: close\n\n"
 #define NOT_FOUND_BODY "<!DOCTYPE HTML PUBLIC \"-//IETF//DTD HTML 2.0//EN\">\n<html>\n<head>\n   <title>404 Not Found</title>\n</head>\n<body>\n   <h1>Not Found</h1>\n   <p>The requested URL \"%s\" was not found on this server.</p>\n</body>\n</html>"
 
 int find_first_index(const char *str, char ch, unsigned int max_length);
 
-bool http_server_debug_prints = true;
+bool http_server_debug_prints = false;
 const char* default_url = DEFAULT_URL;
 ap_get_handeler_func_t get_handler = NULL;
 
@@ -98,16 +101,16 @@ int handle_tcp_data(const char* data, const unsigned int data_len, TCP_CONNECTIO
     return ERR_OK;
 }
 
-int http_server_start_timeout(const char* wifi_ssid, const char* wifi_password, uint32_t wifi_connect_timeout_ms, const char* hostname)
+int http_server_start_timeout(const char* wifi_ssid, const char* wifi_password, uint32_t wifi_connect_timeout_ms, const char* hostname, u16_t host_port)
 {
     tcp_server_debug_prints = http_server_debug_prints;
     tcp_server_max_read_size = MAX_HEADER_SIZE;
     tcp_server_on_data_recived = handle_tcp_data;
-    return tcp_server_start_timeout(wifi_ssid, wifi_password, wifi_connect_timeout_ms, hostname);
+    return tcp_server_start_timeout(wifi_ssid, wifi_password, wifi_connect_timeout_ms, hostname, host_port);
 }
-int http_server_start(const char* wifi_ssid, const char* wifi_password, const char* hostname)
+int http_server_start(const char* wifi_ssid, const char* wifi_password, const char* hostname, u16_t host_port)
 {
-    return http_server_start_timeout(wifi_ssid, wifi_password, TCP_SERVER_DEFAULT_WIFI_CONNECT_TIMEOUT_MS, hostname);
+    return http_server_start_timeout(wifi_ssid, wifi_password, TCP_SERVER_DEFAULT_WIFI_CONNECT_TIMEOUT_MS, hostname, host_port);
 }
 int http_server_stop(void)
 { return tcp_server_stop(); }
@@ -122,4 +125,30 @@ int find_first_index(const char *str, char ch, unsigned int max_length) {
         }
     }
     return -1; // Return -1 if the character is not found
+}
+
+int html_server_send_get_responce(TCP_CONNECTION_T* connection, const char* data, const unsigned int data_len)
+{
+    char header_data[MAX_HEADER_SIZE] = {0};
+    size_t header_len = snprintf(header_data, sizeof(header_data), HTTP_RESPONSE_HEADERS,
+            HTTP_GET_CODE, data_len);
+    if (header_len > sizeof(header_data) - 1) {
+        DEBUG_printf("Too much header data %d\n", header_len);
+        return ERR_CLSD;
+    }
+    
+    // Send the headers to the client
+    err_t err_header = tcp_server_send_data(connection, header_data, header_len);
+
+    // Send the body to the client
+    err_t err_body = tcp_server_send_data(connection, data, data_len);
+
+    if (err_header != ERR_OK) { return err_header; }
+    if (err_body != ERR_OK) { return err_body; }
+    return ERR_OK;
+}
+
+void html_server_register_generator(const char *request_str, url_generator_func_t html_generator_func)
+{
+    register_url(request_str, html_generator_func);
 }

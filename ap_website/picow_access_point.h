@@ -30,7 +30,7 @@ extern ap_get_handeler_func_t get_handler;
 // This will register a function to generate an html page when a request is made to the server
 // request_str - is the part of the url after the slash.
 // html_generator_func - the function that will generate the html page
-void register_html_generator(const char *request_str, html_page_generator_func_t html_generator_func);
+void ap_register_html_generator(const char *request_str, html_page_generator_func_t html_generator_func);
 
 int access_point_init(const char* access_point_name, const char* access_point_password);
 int access_point_deinit();
@@ -42,7 +42,7 @@ void poll();
 int ap_tcp_write(AP_TCP_CONNECTION_T* connection, const char* data, const unsigned int data_len);
 
 // default way to send a get responce
-int send_get_responce(AP_TCP_CONNECTION_T* connection, const char* data, const unsigned int data_len);
+int ap_send_get_responce(AP_TCP_CONNECTION_T* connection, const char* data, const unsigned int data_len);
 
 // useful bits
 extern bool debug_print;

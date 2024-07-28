@@ -13,8 +13,8 @@ extern "C" {
 extern bool wifi_debug_prints;
 extern bool wifi_connected;
 
-int wifi_start(const char* wifi_ssid, const char* wifi_password);
-int wifi_start_timeout(const char* wifi_ssid, const char* wifi_password, uint32_t wifi_connect_timeout_ms);
+int wifi_start(const char* wifi_ssid, const char* wifi_password, const char* hostname);
+int wifi_start_timeout(const char* wifi_ssid, const char* wifi_password, const char* hostname, uint32_t wifi_connect_timeout_ms);
 int wifi_stop(void);
 
 #ifdef __cplusplus

@@ -61,7 +61,7 @@ bool debug_print = false;
 
 // function prototypes
 bool is_default_requests(const char* request, const unsigned max_size);
-int find_first_index(const char *str, char ch, unsigned int max_length);
+static int find_first_index(const char *str, char ch, unsigned int max_length);
 
 const char* default_url = DEFAULT_URL;
 ap_get_handeler_func_t get_handler = NULL;
@@ -100,7 +100,7 @@ static void tcp_server_close(TCP_SERVER_T *state) {
     }
 }
 
-static err_t tcp_server_sent(void *arg, struct tcp_pcb *pcb, u16_t len) {
+static err_t ap_tcp_server_sent(void *arg, struct tcp_pcb *pcb, u16_t len) {
     TCP_CONNECT_STATE_T *con_state = (TCP_CONNECT_STATE_T*)arg;
     if(debug_print) { DEBUG_printf("tcp_server_sent %u\n", len); }
     con_state->sent_len += len;
@@ -111,7 +111,7 @@ static err_t tcp_server_sent(void *arg, struct tcp_pcb *pcb, u16_t len) {
     return ERR_OK;
 }
 
-int send_get_responce(AP_TCP_CONNECTION_T* connection, const char* data, const unsigned int data_len)
+int ap_send_get_responce(AP_TCP_CONNECTION_T* connection, const char* data, const unsigned int data_len)
 {
     TCP_CONNECT_STATE_T* state = (TCP_CONNECT_STATE_T*)connection;
 
@@ -133,7 +133,7 @@ int send_get_responce(AP_TCP_CONNECTION_T* connection, const char* data, const u
     return ERR_OK;
 }
 
-err_t http_get_generate(char *request, char *params, struct tcp_pcb *pcb, TCP_CONNECT_STATE_T *con_state)
+static err_t http_get_generate(char *request, char *params, struct tcp_pcb *pcb, TCP_CONNECT_STATE_T *con_state)
 {
     AP_TCP_CONNECTION_T* connection = (AP_TCP_CONNECTION_T*)con_state;
 
@@ -211,7 +211,7 @@ err_t http_get_generate(char *request, char *params, struct tcp_pcb *pcb, TCP_CO
     return ERR_OK;
 }
 
-err_t tcp_server_recv(void *arg, struct tcp_pcb *pcb, struct pbuf *p, err_t err) {
+err_t ap_tcp_server_recv(void *arg, struct tcp_pcb *pcb, struct pbuf *p, err_t err) {
     TCP_CONNECT_STATE_T *con_state = (TCP_CONNECT_STATE_T*)arg;
     if (!p) {
         if(debug_print) { DEBUG_printf("connection closed\n"); }
@@ -253,13 +253,13 @@ err_t tcp_server_recv(void *arg, struct tcp_pcb *pcb, struct pbuf *p, err_t err)
     return ERR_OK;
 }
 
-static err_t tcp_server_poll(void *arg, struct tcp_pcb *pcb) {
+static err_t ap_tcp_server_poll(void *arg, struct tcp_pcb *pcb) {
     TCP_CONNECT_STATE_T *con_state = (TCP_CONNECT_STATE_T*)arg;
     DEBUG_printf("tcp_server_poll_fn\n");
     return tcp_close_client_connection(con_state, pcb, ERR_OK); // Just disconnect clent?
 }
 
-static void tcp_server_err(void *arg, err_t err) {
+static void ap_tcp_server_err(void *arg, err_t err) {
     TCP_CONNECT_STATE_T *con_state = (TCP_CONNECT_STATE_T*)arg;
     if (err != ERR_ABRT) {
         DEBUG_printf("tcp_client_err_fn %d\n", err);
@@ -286,10 +286,10 @@ static err_t tcp_server_accept(void *arg, struct tcp_pcb *client_pcb, err_t err)
 
     // setup connection to client
     tcp_arg(client_pcb, con_state);
-    tcp_sent(client_pcb, tcp_server_sent);
-    tcp_recv(client_pcb, tcp_server_recv);
-    tcp_poll(client_pcb, tcp_server_poll, POLL_TIME_S * 2);
-    tcp_err(client_pcb, tcp_server_err);
+    tcp_sent(client_pcb, ap_tcp_server_sent);
+    tcp_recv(client_pcb, ap_tcp_server_recv);
+    tcp_poll(client_pcb, ap_tcp_server_poll, POLL_TIME_S * 2);
+    tcp_err(client_pcb, ap_tcp_server_err);
 
     return ERR_OK;
 }
@@ -396,7 +396,7 @@ int ap_tcp_write(AP_TCP_CONNECTION_T* connection, const char* data, const unsign
     return err;
 }
 
-void register_html_generator(const char *request_str, url_generator_func_t html_generator_func)
+void ap_register_html_generator(const char *request_str, url_generator_func_t html_generator_func)
 {
     register_url(request_str, html_generator_func);
 }
@@ -418,7 +418,7 @@ bool is_default_requests(const char* request, const unsigned max_size)
 }
 
 // Function to find the first index of a character in a string
-int find_first_index(const char *str, char ch, unsigned int max_length) {
+static int find_first_index(const char *str, char ch, unsigned int max_length) {
     // Iterate over the string
     for (unsigned int i = 0; (str[i] != '\0') && (i < max_length); i++) {
         // Check if the current character matches the target character
