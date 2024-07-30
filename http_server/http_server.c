@@ -34,23 +34,23 @@ err_t http_send_404(const char *request, TCP_CONNECTION_T* connection)
     unsigned int body_length = snprintf(body_404, sizeof(body_404), NOT_FOUND_BODY, small_request_copy);
     unsigned int header_length = snprintf(header_404, sizeof(header_404), HTTP_RESPONSE_NOT_FOUND_HEADER, body_length);
 
-    bool header_sucess = tcp_server_send_data(connection, header_404, header_length);
-    bool body_sucess = tcp_server_send_data(connection, body_404, body_length);
+    err_t header_error = tcp_server_send_data(connection, header_404, header_length);
+    err_t body_error = tcp_server_send_data(connection, body_404, body_length);
     if(http_server_debug_prints) { DEBUG_printf("Sending not found %s", header_404); }
 
-    if(header_sucess && body_sucess)
+    if((header_error == ERR_OK) && (body_error == ERR_OK))
     {
         return ERR_OK;
     }
     else 
     {
+
         return ERR_ABRT;
     }
 }
 
 err_t http_get_generate(const char *request, const char *params, TCP_CONNECTION_T* connection)
 {
-
     if(http_server_debug_prints) {
         DEBUG_printf("Request: %s?%s\n", request, params);
     }
