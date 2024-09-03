@@ -7,10 +7,12 @@ bool temperture_init(void)
     adc_init();
     adc_set_temp_sensor_enabled(true);
     adc_select_input(4);
+    return true;
 }
 bool temperture_deinit(void)
 {
     adc_set_temp_sensor_enabled(false);
+    return true;
 }
 
 float read_onboard_temperature_c() 
@@ -26,5 +28,5 @@ float read_onboard_temperature_c()
 
 float read_onboard_temperature_f()
 {
-    return read_onboard_temperature_c() * 9 / 5 + 32;
+    return read_onboard_temperature_c() * 9.0 / 5.0 + 32;
 }
