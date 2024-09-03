@@ -1,5 +1,6 @@
 #include <map>
 #include <stdint.h>
+#include <string.h>
 
 #include "url_collection.h"
 #include "http_server.h"
@@ -32,14 +33,38 @@ url_item_t find_handeler(const char *key_or_more)
     return return_value;
 }
 
+url_item_t find_exact(const char *key_or_more)
+{
+    if(key_or_more == NULL || key_or_more == nullptr || key_or_more[0] == '\0')
+    {
+        url_item_t return_value = {};
+        return return_value;
+    }
+
+    for (const auto& [key, value] : url_map) {
+        if (strcmp(key_or_more, key) == 0) { // Check if 'text' starts with 'key'
+            return value;
+        }
+    }
+
+    url_item_t return_value = {};
+    return return_value;
+}
+
 
 extern "C" bool create_html_page(const char *request, const char *params, TCP_CONNECTION_T* connection, int* write_error_code)
 {
-    url_item_t handeler = find_handeler(request);
-
+    // try to find the exact url
+    url_item_t handeler = find_exact(request);
     if (handeler.url == NULL || handeler.html_generator_func == NULL)
     {
-        return false;
+        // try to find the url that starts with the request
+        handeler = find_handeler(request);
+        if (handeler.url == NULL || handeler.html_generator_func == NULL)
+        {
+            // give up
+            return false;
+        }
     }
 
     handeler.html_generator_func(params, connection, write_error_code);
