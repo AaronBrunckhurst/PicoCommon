@@ -41,8 +41,15 @@ url_item_t find_exact(const char *key_or_more)
         return return_value;
     }
 
+    char request_url[512] = {0};
+    // Find the length of the substring until a space or null terminator
+    size_t cpy_len = strcspn(key_or_more, " ");
+    memcpy(request_url, key_or_more, cpy_len);
+    // printf("request_url: \"%s\"\n", request_url);
+
     for (const auto& [key, value] : url_map) {
-        if (strcmp(key_or_more, key) == 0) { // Check if 'text' starts with 'key'
+        if (strcmp(key, request_url) == 0) { // Check if 'text' starts with 'key'
+            // printf("Found exact url match \"%s\" == \"%s\"\n", key, request_url);
             return value;
         }
     }
@@ -65,7 +72,9 @@ extern "C" bool create_html_page(const char *request, const char *params, TCP_CO
             // give up
             return false;
         }
+        // else {printf("Found starts with url match\n");}
     }
+    // else {printf("Found exact url match\n");}
 
     handeler.html_generator_func(params, connection, write_error_code);
     return true;
