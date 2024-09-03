@@ -5,15 +5,21 @@
 #include "serial_console/serial_console.h"
 #include "filesystem/filesystem.h"
 #include "ap_website/picow_access_point.h"
+#include "system/temperture.h"
 
 #define ACCESS_POINT_NAME "Test Website"
 #define ACCESS_POINT_PASSWORD "password"
 
 void prepare_loop(int delay_in_seconds);
 void print_status();
+void print_temp();
 void create_status_html_page(const char *params, AP_TCP_CONNECTION_T* connection, int *write_error_code);
 void create_index_html_page(const char *params, AP_TCP_CONNECTION_T* connection, int *write_error_code);
 void file_html_page(const char *params, AP_TCP_CONNECTION_T* connection, int *write_error_code);
+
+void temp_c_html_page(const char *params, AP_TCP_CONNECTION_T* connection, int *write_error_code);
+void temp_f_html_page(const char *params, AP_TCP_CONNECTION_T* connection, int *write_error_code);
+void temp_html_page(const char *params, AP_TCP_CONNECTION_T* connection, int *write_error_code);
 
 int main() {
     //This function must be initialized here or else PicoLogger functions won't work for some reason
@@ -21,8 +27,11 @@ int main() {
 
     prepare_loop(7);
 
+    temperture_init();
+
     register_default_commands();
     add_command("status", "Prints the status", print_status);
+    add_command("temp", "Prints the system temp", print_temp);
     
     // init filesystem
     init_filesystem();
@@ -33,9 +42,12 @@ int main() {
         return -1;
     }
 
-    register_html_generator("/status", create_status_html_page);
-    register_html_generator("/index.html", create_index_html_page);
-    register_html_generator("/file", file_html_page);
+    ap_register_html_generator("/status", create_status_html_page);
+    ap_register_html_generator("/index.html", create_index_html_page);
+    ap_register_html_generator("/file", file_html_page);
+    ap_register_html_generator("/tempC", temp_c_html_page);
+    ap_register_html_generator("/tempF", temp_f_html_page);
+    ap_register_html_generator("/temp", temp_html_page);
 
     const uint LED_PIN = CYW43_WL_GPIO_LED_PIN;
     gpio_init(LED_PIN);
@@ -76,7 +88,51 @@ void print_status() {
     printf("Status: \n");
 }
 
+void print_temp()
+{
+    float system_temp_c = read_onboard_temperature_c();
+    float system_temp_f = read_onboard_temperature_f();
+    printf("Onboard temperature C = %.02f \n", system_temp_c);
+    printf("Onboard temperature F = %.02f \n", system_temp_f);
+}
+
 // typedef int (*html_page_generator_func_t)(char *html_page_dst, const unsigned int html_page_dst_max_size, const char *params);
+
+void temp_c_html_page(const char *params, AP_TCP_CONNECTION_T* connection, int *write_error_code)
+{
+    (void)params;
+
+    float system_temp_c = read_onboard_temperature_c();
+
+    char html_page[1024] = {0};
+    int html_page_used = snprintf(html_page, 1024, "%.02f", system_temp_c);
+
+    (*write_error_code) = ap_send_get_responce(connection, html_page, html_page_used);
+}
+void temp_f_html_page(const char *params, AP_TCP_CONNECTION_T* connection, int *write_error_code)
+{
+    (void)params;
+
+    float system_temp_f = read_onboard_temperature_f();
+
+    char html_page[1024] = {0};
+    int html_page_used = snprintf(html_page, 1024, "%.02f", system_temp_f);
+
+    (*write_error_code) = ap_send_get_responce(connection, html_page, html_page_used);
+}
+
+void temp_html_page(const char *params, AP_TCP_CONNECTION_T* connection, int *write_error_code)
+{
+    (void)params;
+
+    float system_temp_c = read_onboard_temperature_c();
+    float system_temp_f = read_onboard_temperature_f();
+
+    char html_page[1024] = {0};
+    int html_page_used = snprintf(html_page, 1024, "<html><body><h1>Temperature</h1><p>Onboard temperature C = %.02f</p><p>Onboard temperature F = %.02f</p></body></html>", system_temp_c, system_temp_f);
+
+    (*write_error_code) = ap_send_get_responce(connection, html_page, html_page_used);
+}
 
 void create_status_html_page(const char *params, AP_TCP_CONNECTION_T* connection, int *write_error_code)
 {
@@ -85,7 +141,7 @@ void create_status_html_page(const char *params, AP_TCP_CONNECTION_T* connection
     char html_page[1024] = {0};
     int html_page_used = snprintf(html_page, 1024, "<html><body><h1>Status</h1><p>Some status information</p></body></html>");
 
-    (*write_error_code) = send_get_responce(connection, html_page, html_page_used);
+    (*write_error_code) = ap_send_get_responce(connection, html_page, html_page_used);
 }
 
 void create_index_html_page(const char *params, AP_TCP_CONNECTION_T* connection, int *write_error_code)
@@ -95,7 +151,7 @@ void create_index_html_page(const char *params, AP_TCP_CONNECTION_T* connection,
     char html_page[1024] = {0};
     int html_page_used = snprintf(html_page, 1024, "<html><body><h1>Status</h1><p>Index: </p></body></html>");
 
-    (*write_error_code) = send_get_responce(connection, html_page, html_page_used);
+    (*write_error_code) = ap_send_get_responce(connection, html_page, html_page_used);
 }
 
 // Example of a way of downloading files through HTTP
