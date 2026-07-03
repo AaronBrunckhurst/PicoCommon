@@ -1,4 +1,5 @@
 #include <map>
+#include <string>
 
 #include "url_collection.h"
 #include "picow_access_point.h"

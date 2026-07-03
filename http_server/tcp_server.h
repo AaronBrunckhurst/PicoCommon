@@ -1,6 +1,8 @@
 #ifndef PICOW_TCP_SERVER_H
 #define PICOW_TCP_SERVER_H
 
+#include <stdint.h>
+
 typedef unsigned short u16_t;
 
 #define TCP_SERVER_DEFAULT_WIFI_CONNECT_TIMEOUT_MS 30000

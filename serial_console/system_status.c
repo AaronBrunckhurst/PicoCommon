@@ -1,6 +1,7 @@
 #include "pico/stdlib.h"
 #include "pico/time.h"
 #include <stdio.h>
+#include <time.h>
 
 #include "pico/bootrom.h"
 #include "pico/malloc.h"

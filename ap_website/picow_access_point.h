@@ -20,11 +20,11 @@ typedef void (*html_page_generator_func_t)(const char *params, AP_TCP_CONNECTION
 typedef bool (*ap_get_handeler_func_t)(char *request, char *params, AP_TCP_CONNECTION_T* connection, int *write_error_code);
 
 // set this in your program to change what page the users are brought to by default
-extern const char* default_url;
+extern const char* ap_default_url;
 
 // set this if you need to handle get requests in a specific way
 // and request endpoint already registered with register_html_generator will not get passed to this function
-extern ap_get_handeler_func_t get_handler;
+extern ap_get_handeler_func_t ap_get_handler;
 
 // register_html_generator:
 // This will register a function to generate an html page when a request is made to the server

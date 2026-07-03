@@ -63,8 +63,8 @@ bool debug_print = false;
 bool is_default_requests(const char* request, const unsigned max_size);
 static int find_first_index(const char *str, char ch, unsigned int max_length);
 
-const char* default_url = DEFAULT_URL;
-ap_get_handeler_func_t get_handler = NULL;
+const char* ap_default_url = DEFAULT_URL;
+ap_get_handeler_func_t ap_get_handler = NULL;
 
 // globals, for init and deinit
 static TCP_SERVER_T* state;
@@ -149,14 +149,14 @@ static err_t http_get_generate(char *request, char *params, struct tcp_pcb *pcb,
         return send_error_code;
     }
 
-    if(get_handler != NULL)
+    if(ap_get_handler != NULL)
     {
-        bool handeled = get_handler(request, params, connection, &send_error_code);
+        bool handeled = ap_get_handler(request, params, connection, &send_error_code);
         if(handeled)
         {
             return send_error_code;
         }
-    }    
+    }
 
     // Check we had enough buffer space
     if (con_state->result_len > sizeof(con_state->result) - 1) {
@@ -177,7 +177,7 @@ static err_t http_get_generate(char *request, char *params, struct tcp_pcb *pcb,
         {
             // Send redirect
             con_state->header_len = snprintf(con_state->headers, sizeof(con_state->headers), HTTP_RESPONSE_REDIRECT_HEADER,
-                ipaddr_ntoa(con_state->gw), default_url);
+                ipaddr_ntoa(con_state->gw), ap_default_url);
             if(debug_print) { DEBUG_printf("Sending redirect %s", con_state->headers); }
         }
         else
