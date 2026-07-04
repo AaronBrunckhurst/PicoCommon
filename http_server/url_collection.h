@@ -10,8 +10,10 @@ extern "C" {
 #endif
 
 typedef void (*url_generator_func_t)(const char *params, TCP_CONNECTION_T* connection, int *write_error_code);
+typedef void (*post_handler_func_t)(const char *body, TCP_CONNECTION_T* connection, int *write_error_code);
 
 void register_url(const char *url, url_generator_func_t html_generator_func);
+void register_post_url(const char *url, post_handler_func_t handler);
 
 // create_html_page:
 // This function will be called when a request is made to the server
@@ -20,6 +22,7 @@ void register_url(const char *url, url_generator_func_t html_generator_func);
 // result - is the buffer where the html page will be stored
 // max_result_len - is the maximum length of the result buffer
 bool create_html_page(const char *request, const char *params, TCP_CONNECTION_T* connection, int *write_error_code);
+bool handle_post_request(const char *request, const char *body, TCP_CONNECTION_T* connection, int *write_error_code);
 
 #ifdef __cplusplus
 };
