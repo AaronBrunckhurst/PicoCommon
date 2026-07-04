@@ -40,10 +40,11 @@ int wifi_start_timeout(const char* wifi_ssid, const char* wifi_password, const c
     if(wifi_debug_prints) {
         printf("TCP Server connecting to Wi-Fi: \"%s\"\n", wifi_ssid);
     }
-    if (cyw43_arch_wifi_connect_timeout_ms(wifi_ssid, wifi_password, CYW43_AUTH_WPA2_AES_PSK, wifi_connect_timeout_ms)) {
+    if (cyw43_arch_wifi_connect_timeout_ms(wifi_ssid, wifi_password, CYW43_AUTH_WPA2_MIXED_PSK, wifi_connect_timeout_ms)) {
         if(wifi_debug_prints) {
             printf("TCP Server failed to connect to wifi network \"%s\"\n", wifi_ssid);
         }
+        cyw43_arch_deinit();
         return 2;
     } else {
         if(wifi_debug_prints) {
