@@ -67,3 +67,11 @@ int wifi_stop(void)
     }
     return WIFI_STATUS_SUCESS;
 }
+
+int32_t wifi_get_rssi(void)
+{
+    if (!wifi_connected) return 0;
+    int32_t rssi = 0;
+    cyw43_wifi_get_rssi(&cyw43_state, &rssi);
+    return rssi;
+}

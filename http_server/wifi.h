@@ -1,6 +1,8 @@
 #ifndef PICOW_WIFI_H
 #define PICOW_WIFI_H
 
+#include <stdint.h>
+
 #define WIFI_CONNECT_DEFAULT_TIMEOUT_MS 30000
 #define WIFI_STATUS_SUCESS 0
 
@@ -16,6 +18,9 @@ extern bool wifi_connected;
 int wifi_start(const char* wifi_ssid, const char* wifi_password, const char* hostname);
 int wifi_start_timeout(const char* wifi_ssid, const char* wifi_password, const char* hostname, uint32_t wifi_connect_timeout_ms);
 int wifi_stop(void);
+
+// Returns RSSI in dBm when connected, 0 if not connected or unavailable
+int32_t wifi_get_rssi(void);
 
 #ifdef __cplusplus
 };
