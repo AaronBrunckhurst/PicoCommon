@@ -117,6 +117,7 @@ err_t tcp_server_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t err
         // Copy the data into the buffer
         char read_data[tcp_server_max_read_size];
         unsigned short amount_read = pbuf_copy_partial(p, read_data, tcp_server_max_read_size-1, 0);
+        read_data[amount_read] = '\0';
 
         if(tcp_server_on_data_recived != NULL) {
             TCP_CONNECTION_T* connection = (TCP_CONNECTION_T*)con_state;

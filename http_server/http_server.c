@@ -10,6 +10,7 @@
 #define DEBUG_printf printf
 
 #define HTTP_GET "GET"
+#define HTTP_POST "POST"
 #define HTTP_GET_CODE 200
 
 #define HTTP_RESPONSE_HEADERS "HTTP/1.1 %d OK\nServer: PICOW (RP2040)\nContent-Length: %d\nContent-Type: text/html; charset=utf-8\nConnection: close\n\n"
@@ -22,6 +23,7 @@ int find_first_index(const char *str, char ch, unsigned int max_length);
 bool http_server_debug_prints = false;
 const char* default_url = DEFAULT_URL;
 ap_get_handeler_func_t get_handler = NULL;
+ap_post_handler_func_t post_handler = NULL;
 
 err_t http_send_404(const char *request, TCP_CONNECTION_T* connection)
 {
@@ -76,6 +78,24 @@ err_t http_get_generate(const char *request, const char *params, TCP_CONNECTION_
     return http_send_404(request, connection);
 }
 
+err_t http_post_handle(const char *request, const char *body, TCP_CONNECTION_T* connection)
+{
+    if(http_server_debug_prints) {
+        DEBUG_printf("POST Request: %s body: %s\n", request, body);
+    }
+
+    int send_error_code = ERR_OK;
+    bool handled = handle_post_request(request, body, connection, &send_error_code);
+    if (handled) return send_error_code;
+
+    if (post_handler != NULL) {
+        handled = post_handler(request, body, connection, &send_error_code);
+        if (handled) return send_error_code;
+    }
+
+    return http_send_404(request, connection);
+}
+
 int handle_tcp_data(const char* data, const unsigned int data_len, TCP_CONNECTION_T* connection)
 {
     (void)data_len;
@@ -98,13 +118,26 @@ int handle_tcp_data(const char* data, const unsigned int data_len, TCP_CONNECTIO
         err_t generate_error = http_get_generate(request, params, connection);
         if(generate_error != ERR_OK) return generate_error;
     }
+    // Handle POST request
+    else if (strncmp(HTTP_POST, data, sizeof(HTTP_POST) - 1) == 0) {
+        char *request = (char*)data + sizeof(HTTP_POST); // points to "/url HTTP/1.1\r\n..."
+        // Locate body separator before null-terminating the request line
+        char *body_sep = strstr(request, "\r\n\r\n");
+        char *body = body_sep ? body_sep + 4 : (char*)"";
+        // Null-terminate URL at the space before "HTTP/1.1"
+        char *space = strchr(request, ' ');
+        if (space) *space = 0;
+
+        err_t post_error = http_post_handle(request, body, connection);
+        if (post_error != ERR_OK) return post_error;
+    }
     return ERR_OK;
 }
 
 int http_server_start_timeout(const char* wifi_ssid, const char* wifi_password, uint32_t wifi_connect_timeout_ms, const char* hostname, u16_t host_port)
 {
     tcp_server_debug_prints = http_server_debug_prints;
-    tcp_server_max_read_size = MAX_HEADER_SIZE;
+    tcp_server_max_read_size = MAX_REQUEST_SIZE;
     tcp_server_on_data_recived = handle_tcp_data;
     return tcp_server_start_timeout(wifi_ssid, wifi_password, wifi_connect_timeout_ms, hostname, host_port);
 }
@@ -151,4 +184,9 @@ int html_server_send_get_responce(TCP_CONNECTION_T* connection, const char* data
 void html_server_register_generator(const char *request_str, url_generator_func_t html_generator_func)
 {
     register_url(request_str, html_generator_func);
+}
+
+void html_server_register_post_handler(const char *request_str, html_post_handler_func_t handler)
+{
+    register_post_url(request_str, (post_handler_func_t)handler);
 }

@@ -12,13 +12,25 @@ typedef struct url_item {
     url_generator_func_t html_generator_func;
 } url_item_t;
 
+typedef struct post_url_item {
+    const char *url;
+    post_handler_func_t handler;
+} post_url_item_t;
+
 // <string request_name, url_item_t url_generator>
 std::map<const char*, url_item_t> url_map;
+std::map<const char*, post_url_item_t> post_url_map;
 
 extern "C" void register_url(const char *url, url_generator_func_t html_generator_func)
 {
     url_item_t item = {url, html_generator_func};
     url_map[url] = item;
+}
+
+extern "C" void register_post_url(const char *url, post_handler_func_t handler)
+{
+    post_url_item_t item = {url, handler};
+    post_url_map[url] = item;
 }
 
 url_item_t find_handeler(const char *key_or_more)
@@ -79,4 +91,17 @@ extern "C" bool create_html_page(const char *request, const char *params, TCP_CO
 
     handeler.html_generator_func(params, connection, write_error_code);
     return true;
+}
+
+extern "C" bool handle_post_request(const char *request, const char *body, TCP_CONNECTION_T* connection, int *write_error_code)
+{
+    if (request == NULL || request[0] == '\0') return false;
+
+    for (const auto& [key, value] : post_url_map) {
+        if (strcmp(key, request) == 0) {
+            value.handler(body, connection, write_error_code);
+            return true;
+        }
+    }
+    return false;
 }

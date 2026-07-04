@@ -12,14 +12,17 @@ extern "C" {
 typedef unsigned short u16_t;
 
 #define MAX_HEADER_SIZE 128
+#define MAX_REQUEST_SIZE 512
 #define MAX_DATA_SIZE 4096
 
 // if you change this, you will change the default page that clients will be shown. MAKE SURE THIS EXISTS
 #define DEFAULT_URL "/index.html"
 
 typedef void (*html_page_generator_func_t)(const char *params, TCP_CONNECTION_T* connection, int *write_error_code);
+typedef void (*html_post_handler_func_t)(const char *body, TCP_CONNECTION_T* connection, int *write_error_code);
 
 typedef bool (*ap_get_handeler_func_t)(const char *request, const char *params, TCP_CONNECTION_T* connection, int *write_error_code);
+typedef bool (*ap_post_handler_func_t)(const char *request, const char *body, TCP_CONNECTION_T* connection, int *write_error_code);
 
 // set this in your program to change what page the users are brought to by default
 extern const char* default_url;
@@ -28,6 +31,9 @@ extern const char* default_url;
 // and request endpoint already registered with register_html_generator will not get passed to this function
 extern ap_get_handeler_func_t get_handler;
 
+// set this if you need to handle post requests that are not registered with html_server_register_post_handler
+extern ap_post_handler_func_t post_handler;
+
 extern bool http_server_debug_prints;
 
 int http_server_start_timeout(const char* wifi_ssid, const char* wifi_password, uint32_t wifi_connect_timeout_ms, const char* hostname, u16_t host_port);
@@ -35,6 +41,7 @@ int http_server_start(const char* wifi_ssid, const char* wifi_password, const ch
 int http_server_stop(void);
 
 void html_server_register_generator(const char *request_str, html_page_generator_func_t html_generator_func);
+void html_server_register_post_handler(const char *request_str, html_post_handler_func_t handler);
 int html_server_send_get_responce(TCP_CONNECTION_T* connection, const char* data, const unsigned int data_len);
 
 #ifdef __cplusplus
