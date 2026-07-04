@@ -1,3 +1,4 @@
+#include <string.h>
 #include "pico_hal.h"
 #include "filesystem.h"
 
@@ -49,6 +50,29 @@ void set_string(const char* filename, const char* value, unsigned int value_leng
     }
     pico_write(file, value, value_length);
     pico_close(file);
+}
+
+int list_files(const char* path, list_files_cb_t cb, void* user_data) {
+    int dir = pico_dir_open(path);
+    if (dir < 0) return dir;
+
+    int count = 0;
+    struct lfs_info info;
+    while (pico_dir_read(dir, &info) > 0) {
+        if (strcmp(info.name, ".") == 0 || strcmp(info.name, "..") == 0) continue;
+
+        file_info_t entry;
+        strncpy(entry.name, info.name, sizeof(entry.name) - 1);
+        entry.name[sizeof(entry.name) - 1] = '\0';
+        entry.is_dir = (info.type == LFS_TYPE_DIR);
+        entry.size = (unsigned int)info.size;
+
+        count++;
+        if (cb && !cb(&entry, user_data)) break;
+    }
+
+    pico_dir_close(dir);
+    return count;
 }
 
 bool format_filesystem()
